@@ -1,17 +1,21 @@
 package com.kvlogic.springsecex.model;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue; // Import this
+import jakarta.persistence.GenerationType; // Import this
 import jakarta.persistence.Id;
 
 @Entity
 public class Users {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // <--- THIS FIXES THE PARAMETER ERROR
     private int id;
+    
     private String username;
     private String password;
-    private String role; // Added Role
+    private String role; 
 
-    // Getters and Setters
+    // Getters and Setters (keep as they are)
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 
@@ -26,10 +30,6 @@ public class Users {
 
     @Override
     public String toString() {
-        return "Users{" +
-                "id=" + id +
-                ", username='" + username + '\'' +
-                ", role='" + role + '\'' +
-                '}';
+        return "Users{" + "id=" + id + ", username='" + username + '\'' + ", role='" + role + '\'' + '}';
     }
 }
