@@ -9,6 +9,7 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -25,32 +26,36 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
     private UserDetailsService userDetailsService;
 
-    // REMOVED: @Autowired private JwtFilter jwtFilter;
-    // We will define it as a bean below to control its registration.
+    @Autowired
+    private JwtFilter jwtFilter;
 
-    @Bean
-    public JwtFilter jwtFilter() {
-        return new JwtFilter();
-    }
+    @Autowired
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .cors(Customizer.withDefaults()) // Uses the corsConfigurationSource bean defined below
-                .csrf(customizer -> customizer.disable())
-                .authorizeHttpRequests(request -> request
-                        .requestMatchers("/register", "/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/students").hasRole("ADMIN")
-                        .anyRequest().authenticated())
-                // FIXED: Disable HTTP Basic to prevent browser popup/401 loops
+                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
                 .httpBasic(basic -> basic.disable())
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .authorizeHttpRequests(request -> request
+                        // Public Auth Endpoints (both modern and legacy paths)
+                        .requestMatchers("/api/auth/**", "/register", "/login", "/refresh", "/logout").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Student Endpoints RBAC
+                        .requestMatchers(HttpMethod.POST, "/students/**").hasAnyRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/students/**").hasAnyRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/students/**").authenticated()
+                        .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
@@ -72,15 +77,22 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // FIXED: Changed from "CorsFilter" to "CorsConfigurationSource"
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(Arrays.asList("http://localhost:5500", "http://127.0.0.1:5500", "https://*.netlify.app", "https://*.vercel.app"));
-        config.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type"));
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:5500",
+                "http://127.0.0.1:5500",
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://*.netlify.app",
+                "https://*.vercel.app"
+        ));
+        config.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type", "Accept", "X-Requested-With"));
+        config.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         source.registerCorsConfiguration("/**", config);
         return source;
     }

@@ -1,43 +1,55 @@
 package com.kvlogic.springsecex.controller;
 
+import com.kvlogic.springsecex.dto.ApiResponse;
 import com.kvlogic.springsecex.model.Student;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @RestController
 public class StudentController {
 
-    private List<Student> students = new ArrayList<>(
+    private final List<Student> students = new CopyOnWriteArrayList<>(
             List.of(
-                    new Student(1, "Navin", 60),
-                    new Student(2, "Kiran", 65)
+                    new Student(1, "Navin", 85),
+                    new Student(2, "Kiran", 92),
+                    new Student(3, "Alex", 78)
             ));
 
-
     @GetMapping("/students")
-    public List<Student> getStudents() {
-        return students;
+    public ResponseEntity<List<Student>> getStudents() {
+        return ResponseEntity.ok(students);
     }
-
-    @GetMapping("/csrf-token")
-    public CsrfToken getCsrfToken(HttpServletRequest request) {
-        return (CsrfToken) request.getAttribute("_csrf");
-
-
-    }
-
 
     @PostMapping("/students")
-    public Student addStudent(@RequestBody Student student) {
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('SCOPE_students:write')")
+    public ResponseEntity<ApiResponse<Student>> addStudent(@RequestBody Student student) {
+        if (student == null || student.getName() == null || student.getName().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Student name is required"));
+        }
+        // Auto-assign ID if missing or duplicate
+        if (student.getId() <= 0 || students.stream().anyMatch(s -> s.getId() == student.getId())) {
+            int nextId = students.stream().mapToInt(Student::getId).max().orElse(0) + 1;
+            student.setId(nextId);
+        }
         students.add(student);
-        return student;
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok("Student added successfully", student));
     }
 
+    @DeleteMapping("/students/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('SCOPE_students:delete')")
+    public ResponseEntity<ApiResponse<String>> deleteStudent(@PathVariable int id) {
+        boolean removed = students.removeIf(s -> s.getId() == id);
+        if (removed) {
+            return ResponseEntity.ok(ApiResponse.ok("Student with ID " + id + " deleted", null));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Student with ID " + id + " not found"));
+        }
+    }
 }
