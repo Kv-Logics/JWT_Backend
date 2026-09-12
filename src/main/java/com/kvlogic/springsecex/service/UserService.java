@@ -36,10 +36,19 @@ public class UserService {
     private PasswordEncoder passwordEncoder;
 
     public Users register(Users user) {
-        if (repo.findByUsername(user.getUsername()) != null) {
-            throw new RuntimeException("Username '" + user.getUsername() + "' is already taken.");
+        if (user == null || user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            throw new RuntimeException("Username is required");
         }
+        if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+            throw new RuntimeException("Password is required");
+        }
+        String cleanUsername = user.getUsername().trim();
+        if (repo.findByUsername(cleanUsername) != null) {
+            throw new RuntimeException("Username '" + cleanUsername + "' is already taken.");
+        }
+        user.setUsername(cleanUsername);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setId(null); // Ensure null so Hibernate generates the ID via sequence
         if (user.getRole() == null || user.getRole().trim().isEmpty()) {
             user.setRole("USER");
         } else {

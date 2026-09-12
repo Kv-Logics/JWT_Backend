@@ -43,6 +43,17 @@ public class JwtFilter extends OncePerRequestFilter {
     private ApplicationContext context;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.startsWith("/api/auth/") || 
+               path.equals("/login") || 
+               path.equals("/register") || 
+               path.equals("/refresh") || 
+               path.equals("/logout") || 
+               path.equals("/error");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 

@@ -47,7 +47,7 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .authorizeHttpRequests(request -> request
                         // Public Auth Endpoints (both modern and legacy paths)
-                        .requestMatchers("/api/auth/**", "/register", "/login", "/refresh", "/logout").permitAll()
+                        .requestMatchers("/api/auth/**", "/register", "/login", "/refresh", "/logout", "/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Student Endpoints RBAC
                         .requestMatchers(HttpMethod.POST, "/students/**").hasAnyRole("ADMIN")
