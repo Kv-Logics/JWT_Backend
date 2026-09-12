@@ -43,8 +43,8 @@ public class UserService {
             throw new RuntimeException("Password is required");
         }
         String cleanUsername = user.getUsername().trim();
-        if (repo.findByUsername(cleanUsername) != null) {
-            throw new RuntimeException("Username '" + cleanUsername + "' is already taken.");
+        if (repo.existsByUsername(cleanUsername)) {
+            throw new RuntimeException("Username '" + cleanUsername + "' is already taken. Please choose a different username.");
         }
         user.setUsername(cleanUsername);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
@@ -63,7 +63,7 @@ public class UserService {
         );
 
         if (authentication.isAuthenticated()) {
-            Users dbUser = repo.findByUsername(request.getUsername());
+            Users dbUser = repo.findFirstByUsername(request.getUsername());
             String role = (dbUser.getRole() == null || dbUser.getRole().isEmpty()) ? "USER" : dbUser.getRole();
             String scope = "ADMIN".equalsIgnoreCase(role)
                     ? "students:read students:write students:delete"
@@ -136,6 +136,6 @@ public class UserService {
     }
 
     public Users getUserByUsername(String username) {
-        return repo.findByUsername(username);
+        return repo.findFirstByUsername(username);
     }
 }

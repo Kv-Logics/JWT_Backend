@@ -20,8 +20,7 @@ public class AdminSeeder implements CommandLineRunner {
     public void run(String... args) throws Exception {
         // 1. Check if the fixed admin already exists using 'username'
         String adminUsername = "admin";
-
-        if (userRepo.findByUsername(adminUsername) == null) {
+        if (userRepo.findFirstByUsername(adminUsername) == null) {
             // 2. If not, create it immediately
             Users admin = new Users(); // Fixed: Changed from User to Users
 
